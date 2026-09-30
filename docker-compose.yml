@@ -43,6 +43,9 @@ services:
     environment:
       CH_HOST: clickhouse
       CH_PORT: 8123
+      # so every dbt command works without needing --project-dir/--profiles-dir
+      DBT_PROJECT_DIR: /usr/app/airstats
+      DBT_PROFILES_DIR: /usr/app/airstats
     volumes:
       - .:/usr/app   # repo root; dbt_project.yml etc. live in the airstats/ subfolder within it
     ports:
