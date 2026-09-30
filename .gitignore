@@ -220,3 +220,4 @@ logs/
 
 # NOTE: /airstats is intentionally NOT ignored here (unlike the template)
 # — this is my own solution repo, the dbt project itself should be committed.
+.user.yml

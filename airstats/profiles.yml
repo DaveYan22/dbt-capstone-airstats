@@ -1,0 +1,18 @@
+# Profile for airstats. The assignment's own instructions say to commit this file
+# (private repo, no real credentials) -- fine for the course, but this uses local
+# ClickHouse creds only, not anything sensitive.
+airstats:
+  target: dev
+  outputs:
+    dev:
+      type: clickhouse
+      driver: http
+      host: "{{ env_var('CH_HOST', 'localhost') }}"
+      port: "{{ env_var('CH_PORT', '8126') | as_number }}"
+      user: dbt
+      password: dbt_password
+      schema: dev
+      secure: false
+      threads: 4
+      custom_settings:
+        join_use_nulls: 1
