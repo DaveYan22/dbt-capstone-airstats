@@ -1,0 +1,7 @@
+snapshots:
+  - name: scd_silver_airports
+    relation: ref('silver_airports')
+    config:
+      unique_key: airport_ident   # the only identifier silver_airports has — no raw `id` survives the staging rename
+      strategy: check
+      check_cols: all             # "on all columns", per the exercise

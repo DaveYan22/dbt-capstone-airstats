@@ -1,0 +1,7 @@
+snapshots:
+  - name: scd_silver_runways
+    relation: ref('silver_runways')
+    config:
+      unique_key: runway_id       # this one DID keep a renamed id column (id -> runway_id, Exercise 4)
+      strategy: check
+      check_cols: all
