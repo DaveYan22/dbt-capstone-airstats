@@ -352,10 +352,135 @@ flag column, not just a text column — same ordering rule, same result shape.
 
 ---
 
+## Part 8 — Tests
+
+**Requirement:** `unique`/`not_null` (educated guess) on every silver table,
+one `accepted_values`, `relationships` between all three tables at
+`severity: warn`, 3+ `dbt_expectations` tests, 2 singular tests, and
+`store_failures` configured.
+
+**Step 0 — install `dbt_expectations`:**
+```yaml
+# airstats/packages.yml
+packages:
+  - package: calogica/dbt_expectations
+    version: 0.10.4
+```
+```powershell
+docker compose run --rm dbt deps
+```
+
+**`models/silver/schema.yml`** — the full test suite:
+```yaml
+version: 2
+
+models:
+  - name: silver_airports
+    data_tests:
+      - dbt_expectations.expect_table_row_count_to_be_between:
+          arguments:
+            min_value: 50000
+            max_value: 150000   # generous -- this is live, daily-updating data
+    columns:
+      - name: airport_ident
+        data_tests: [unique, not_null]
+      - name: airport_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['small_airport', 'medium_airport', 'large_airport',
+                         'heliport', 'seaplane_base', 'balloonport', 'closed']
+      - name: airport_lat
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: {min_value: -90, max_value: 90}
+      - name: airport_long
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments: {min_value: -180, max_value: 180}
+
+  - name: silver_runways
+    columns:
+      - name: runway_id
+        data_tests: [unique, not_null]
+      - name: airport_ident
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('silver_airports'), field: airport_ident}
+              config: {severity: warn}
+
+  - name: silver_airport_comments
+    columns:
+      - name: comment_id
+        data_tests: [unique, not_null]
+      - name: airport_ident
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('silver_airports'), field: airport_ident}
+              config: {severity: warn}
+```
+
+**The 2 singular tests:**
+```sql
+-- tests/comment_not_in_future.sql
+SELECT * FROM {{ ref('silver_airport_comments') }}
+WHERE comment_timestamp > now()
+```
+```sql
+-- tests/runway_length_positive.sql
+{{ config(severity='warn') }}
+SELECT * FROM {{ ref('silver_runways') }}
+WHERE runway_length_ft IS NOT NULL AND runway_length_ft <= 0
+```
+
+**`dbt_project.yml` addition:**
+```yaml
+data_tests:
+  airstats:
+    +store_failures: true
+    +schema: test_failures
+```
+
+**Verified (`dbt build`):**
+```
+Finished running 1 incremental model, 2 snapshots, 2 table models, 16 data tests
+Done. PASS=20 WARN=1 ERROR=0 SKIP=0 NO-OP=0 TOTAL=21
+```
+
+**A real data quality finding, caught by `runway_length_positive`, not a test
+bug:** 6 real runways have `runway_length_ft = 0` paired with
+`runway_surface = 'UNK'`:
+```
+runway_id | airport_ident | runway_length_ft | runway_surface
+   246297 | LFQL          |                0 | UNK
+   246298 | LFQL          |                0 | UNK
+   249233 | LFAK          |                0 | UNK
+   255232 | EGSL          |                0 | UNK
+   259295 | YROB          |                0 | N
+   263789 | AR-0378       |                0 | GRE
+```
+The source data uses `0` as a placeholder for "genuinely unknown" rather
+than `NULL` — a real, crowdsourced-data quirk, not a mistake in the test.
+Set to `severity: warn` and documented, same principle as the
+"two Bruce Willis" test in the airbnb course project: a real finding stays
+*visible*, it doesn't get silently excluded from the `WHERE` clause.
+
+A design choice worth noting on the `dbt_expectations` tests picked: all
+three (`expect_column_values_to_be_between` ×2, `expect_table_row_count_to_be_between`)
+were deliberately chosen to avoid regex- or quantile-based macros, which are
+known from the earlier course project to compile to ClickHouse functions
+that don't exist (`regexp_instr`, `percentile_cont`) without custom
+`clickhouse__*` dispatch-macro overrides — none of which exist in this
+project yet.
+
+---
+
 ## Still open
 
 - Exercise 9's `analyses/la_heliport_closed.sql` file (the analysis query
   validating the snapshot) — not yet created.
 - Filling the README's remaining `REPLACE THIS CODE BLOCK` placeholders with
   the actual SQL/commands/results documented above.
-- Part 8 (Tests) and Part 9 (Documentation) — not started.
+- Part 9 (Documentation) — not started.
