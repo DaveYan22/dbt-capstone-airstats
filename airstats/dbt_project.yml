@@ -27,3 +27,8 @@ models:
     silver:
       +materialized: table   # silver_airport_comments overrides this to incremental, in its own file
 
+data_tests:
+  airstats:
+    +store_failures: true
+    +schema: test_failures
+

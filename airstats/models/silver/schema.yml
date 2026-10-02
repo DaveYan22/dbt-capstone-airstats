@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: silver_airports
+    description: Global airport registry, cleaned (see bronze/src_airports for the rename).
+    data_tests:
+      - dbt_expectations.expect_table_row_count_to_be_between:
+          arguments:
+            min_value: 50000
+            max_value: 150000   # generous bounds -- this is live, daily-updating data
+    columns:
+      - name: airport_ident
+        description: ICAO code, the natural primary key.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: airport_type
+        description: Airport classification.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['small_airport', 'medium_airport', 'large_airport',
+                         'heliport', 'seaplane_base', 'balloonport', 'closed']
+
+      - name: airport_lat
+        description: Latitude in decimal degrees.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: -90
+                max_value: 90
+
+      - name: airport_long
+        description: Longitude in decimal degrees.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: -180
+                max_value: 180
+
+  - name: silver_runways
+    description: Runway data, with runway_surface defaulted to '__UNKNOWN__' when null/empty.
+    columns:
+      - name: runway_id
+        description: Primary key.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: airport_ident
+        description: FK to silver_airports.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('silver_airports')
+                field: airport_ident
+              config:
+                severity: warn   # referential integrity may not hold across all source data
+
+  - name: silver_airport_comments
+    description: >
+      User comments about airports, incremental (watermarked on comment_id).
+      Rows with null/empty comment_body filtered; member_nickname defaulted
+      to '__UNKNOWN__' when null/empty.
+    columns:
+      - name: comment_id
+        description: Primary key.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: airport_ident
+        description: FK to silver_airports.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('silver_airports')
+                field: airport_ident
+              config:
+                severity: warn
