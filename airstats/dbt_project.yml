@@ -22,3 +22,8 @@ clean-targets:         # directories to be removed by `dbt clean`
   - "target"
   - "dbt_packages"
 
+models:
+  airstats:
+    silver:
+      +materialized: table   # silver_airport_comments overrides this to incremental, in its own file
+

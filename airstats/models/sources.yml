@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: airstats
+    description: >
+      Raw AirStats tables loaded from OurAirports.com (Public Domain). Loaded
+      via clickhouse/init/01_load_airstats_raw.sql -- see DATASETS.md / ERD.md
+      for the full schema and relationships.
+    schema: raw           # ClickHouse database
+    tables:
+
+      - name: airports
+        description: Global airport registry (~72K+ rows, live/updates daily).
+
+      - name: comments        # must be "comments", not "airport_comments" (Exercise 1 requirement)
+        identifier: airport_comments
+        description: User-submitted comments about airports.
+
+      - name: runways
+        description: Physical runway data for airports (~44K+ rows).
