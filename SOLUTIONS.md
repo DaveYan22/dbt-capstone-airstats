@@ -491,7 +491,39 @@ are now filled with the SQL, commands, and results used above.
 
 ---
 
-## Part 9 — Documentation
+## Part 9 (optional extension) — Gold layer
+
+Not part of the original assignment. Added as an extension: business-facing
+marts built on the silver layer. The spec is in README Part 9.
+
+**Files:**
+- `airstats/models/gold/gold_airport_activity.sql`: one row per airport, with
+  `runway_count`, `comment_count`, `latest_comment_timestamp`
+- `airstats/models/gold/gold_country_airport_stats.sql`: one row per country,
+  with `total_airports`, `closed_airports`, `total_runways`, `airports_with_runways`
+- `airstats/models/gold/schema.yml`: descriptions, `unique`/`not_null`,
+  `relationships` (warn), and a row-count check
+- `dbt_project.yml`: `gold: +materialized: table`
+
+**Issue hit and fixed:** `gold_airport_activity` initially failed three tests
+with `Unknown expression identifier airport_ident`. The join key was present on
+both sides of the join, so ClickHouse kept a qualified name instead of
+`airport_ident`. Fixed by aliasing it explicitly: `a.airport_ident AS airport_ident`.
+
+**Verified (`dbt build --select gold`):** `PASS=8 WARN=0 ERROR=0`
+
+**Cross-checked against silver:**
+
+| Check | Gold | Silver |
+|---|---|---|
+| airports | 86,135 | 86,135 |
+| runways | 48,267 | 48,267 |
+| comments | 16,414 | 16,414 |
+| closed airports | 13,546 | 13,546 |
+
+---
+
+## Part 10 — Documentation
 
 **Requirement:** descriptions on the silver tables and their columns, at
 least one `{{ doc("...") }}` reference, and an `overview.md` explaining how the
@@ -523,40 +555,8 @@ tests are unchanged.
 
 ---
 
-## Part 10 (optional extension) — Gold layer
-
-Not part of the original assignment. Added as an extension: business-facing
-marts built on the silver layer. The spec is in README Part 10.
-
-**Files:**
-- `airstats/models/gold/gold_airport_activity.sql`: one row per airport, with
-  `runway_count`, `comment_count`, `latest_comment_timestamp`
-- `airstats/models/gold/gold_country_airport_stats.sql`: one row per country,
-  with `total_airports`, `closed_airports`, `total_runways`, `airports_with_runways`
-- `airstats/models/gold/schema.yml`: descriptions, `unique`/`not_null`,
-  `relationships` (warn), and a row-count check
-- `dbt_project.yml`: `gold: +materialized: table`
-
-**Issue hit and fixed:** `gold_airport_activity` initially failed three tests
-with `Unknown expression identifier airport_ident`. The join key was present on
-both sides of the join, so ClickHouse kept a qualified name instead of
-`airport_ident`. Fixed by aliasing it explicitly: `a.airport_ident AS airport_ident`.
-
-**Verified (`dbt build --select gold`):** `PASS=8 WARN=0 ERROR=0`
-
-**Cross-checked against silver:**
-
-| Check | Gold | Silver |
-|---|---|---|
-| airports | 86,135 | 86,135 |
-| runways | 48,267 | 48,267 |
-| comments | 16,414 | 16,414 |
-| closed airports | 13,546 | 13,546 |
-
----
-
 ## Still open
 
-Nothing for Parts 1–9. To view the docs, run
+Nothing for Parts 1–10. To view the docs, run
 `docker compose run --rm --service-ports dbt docs serve --host 0.0.0.0 --port 8080`
 and open `http://localhost:8081` (the compose file maps container port 8080 to host port 8081).

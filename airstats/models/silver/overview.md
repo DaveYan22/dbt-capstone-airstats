@@ -13,4 +13,7 @@ The relationship tests are set to `severity: warn` because the source data is
 crowd-sourced and referential integrity is not guaranteed. The snapshots
 `scd_silver_airports` and `scd_silver_runways` record how these records change
 over time.
+
+The gold layer (`gold_airport_activity`, `gold_country_airport_stats`) is built
+on top of silver and summarises it per airport and per country for dashboards.
 {% enddocs %}
