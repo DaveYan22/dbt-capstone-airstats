@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: gold_airport_activity
+    description: >
+      One row per airport with its runway count, comment count, and time of
+      the latest comment. Built from the silver layer for dashboards.
+    data_tests:
+      - dbt_expectations.expect_table_row_count_to_be_between:
+          arguments:
+            min_value: 50000
+            max_value: 150000
+    columns:
+      - name: airport_ident
+        description: '{{ doc("airport_ident") }}'
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('silver_airports')
+                field: airport_ident
+              config:
+                severity: warn
+
+      - name: airport_name
+        description: Official airport name.
+
+      - name: iso_country
+        description: ISO 3166-1 alpha-2 country code.
+
+      - name: runway_count
+        description: Number of runways at the airport (0 if none recorded).
+
+      - name: comment_count
+        description: Number of user comments on the airport (0 if none).
+
+      - name: latest_comment_timestamp
+        description: Timestamp of the most recent comment, NULL if there are none.
+
+  - name: gold_country_airport_stats
+    description: >
+      One row per country with airport and runway totals. Built from the
+      silver layer for dashboards.
+    columns:
+      - name: iso_country
+        description: ISO 3166-1 alpha-2 country code, the key of this table.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: total_airports
+        description: Number of airports in the country.
+
+      - name: closed_airports
+        description: Number of airports with type 'closed'.
+
+      - name: total_runways
+        description: Total number of runways across the country's airports.
+
+      - name: airports_with_runways
+        description: Number of airports that have at least one runway.

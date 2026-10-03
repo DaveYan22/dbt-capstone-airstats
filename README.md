@@ -370,3 +370,14 @@ Implement the following:
 * Add descriptions to the silver tables and their columns
 * Use a '{{ doc("...") }}'-based documentation at least once
 * Create an overview.md where you discuss in a few sentences how the silver tables interconnect
+
+## Part 10 (optional extension): Gold layer
+
+> Not part of the original assignment. Added as an extension: business-facing
+> marts built on the silver layer.
+
+* Create a `models/gold/` folder. Gold tables are materialized as `table` by default through `dbt_project.yml`.
+* Create `gold_airport_activity`: one row per airport, with `airport_ident`, `airport_name`, `iso_country`, `runway_count`, `comment_count`, and `latest_comment_timestamp`. Build it from `silver_airports`, `silver_runways`, and `silver_airport_comments`.
+* Create `gold_country_airport_stats`: one row per `iso_country`, with `total_airports`, `closed_airports`, `total_runways`, and `airports_with_runways`.
+* Test both models: `unique` and `not_null` on their keys, a `relationships` test from `gold_airport_activity.airport_ident` to `silver_airports` (warn), and a row-count check on `gold_airport_activity`.
+* Document both models and their columns in `schema.yml`.

@@ -26,6 +26,8 @@ models:
   airstats:
     silver:
       +materialized: table   # silver_airport_comments overrides this to incremental, in its own file
+    gold:
+      +materialized: table
 
 data_tests:
   airstats:
