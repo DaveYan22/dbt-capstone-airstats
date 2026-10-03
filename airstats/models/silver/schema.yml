@@ -2,7 +2,9 @@ version: 2
 
 models:
   - name: silver_airports
-    description: Global airport registry, cleaned (see bronze/src_airports for the rename).
+    description: >
+      One row per airport, cleaned from raw.airports. Hub of the silver layer:
+      silver_runways and silver_airport_comments reference it through airport_ident.
     data_tests:
       - dbt_expectations.expect_table_row_count_to_be_between:
           arguments:
@@ -10,21 +12,24 @@ models:
             max_value: 150000   # generous bounds -- this is live, daily-updating data
     columns:
       - name: airport_ident
-        description: ICAO code, the natural primary key.
+        description: '{{ doc("airport_ident") }}'
         data_tests:
           - unique
           - not_null
 
       - name: airport_type
-        description: Airport classification.
+        description: Airport classification, e.g. small_airport, heliport, closed.
         data_tests:
           - accepted_values:
               arguments:
                 values: ['small_airport', 'medium_airport', 'large_airport',
                          'heliport', 'seaplane_base', 'balloonport', 'closed']
 
+      - name: airport_name
+        description: Official airport name.
+
       - name: airport_lat
-        description: Latitude in decimal degrees.
+        description: Latitude in decimal degrees (-90 to 90).
         data_tests:
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
@@ -32,24 +37,36 @@ models:
                 max_value: 90
 
       - name: airport_long
-        description: Longitude in decimal degrees.
+        description: Longitude in decimal degrees (-180 to 180).
         data_tests:
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
                 min_value: -180
                 max_value: 180
 
+      - name: continent
+        description: Two-letter continent code, e.g. EU, NA, AS.
+
+      - name: iso_country
+        description: ISO 3166-1 alpha-2 country code, e.g. US, DE.
+
+      - name: iso_region
+        description: ISO 3166-2 region code, e.g. US-CA.
+
   - name: silver_runways
-    description: Runway data, with runway_surface defaulted to '__UNKNOWN__' when null/empty.
+    description: >
+      One row per runway, cleaned from raw.runways. runway_surface is defaulted to
+      '__UNKNOWN__' when null or empty. Each runway references its airport through
+      airport_ident.
     columns:
       - name: runway_id
-        description: Primary key.
+        description: Primary key of the runway.
         data_tests:
           - unique
           - not_null
 
       - name: airport_ident
-        description: FK to silver_airports.
+        description: '{{ doc("airport_ident") }}'
         data_tests:
           - not_null
           - relationships:
@@ -59,20 +76,36 @@ models:
               config:
                 severity: warn   # referential integrity may not hold across all source data
 
+      - name: runway_length_ft
+        description: Runway length in feet. Source uses 0 for some unknown lengths.
+
+      - name: runway_width_ft
+        description: Runway width in feet.
+
+      - name: runway_surface
+        description: Surface material code (e.g. ASP, CON, GRS), or '__UNKNOWN__'.
+
+      - name: runway_lighted
+        description: 1 if the runway is lit at night, 0 otherwise.
+
+      - name: runway_closed
+        description: 1 if the runway is closed, 0 otherwise.
+
   - name: silver_airport_comments
     description: >
-      User comments about airports, incremental (watermarked on comment_id).
-      Rows with null/empty comment_body filtered; member_nickname defaulted
-      to '__UNKNOWN__' when null/empty.
+      User comments about airports, incremental on comment_id. Rows with a
+      null or empty body are dropped; member_nickname is defaulted to
+      '__UNKNOWN__' when null or empty. Each comment references its airport
+      through airport_ident.
     columns:
       - name: comment_id
-        description: Primary key.
+        description: Primary key of the comment, also the incremental watermark.
         data_tests:
           - unique
           - not_null
 
       - name: airport_ident
-        description: FK to silver_airports.
+        description: '{{ doc("airport_ident") }}'
         data_tests:
           - not_null
           - relationships:
@@ -81,3 +114,18 @@ models:
                 field: airport_ident
               config:
                 severity: warn
+
+      - name: comment_timestamp
+        description: When the comment was posted (UTC, DateTime).
+
+      - name: member_nickname
+        description: Username of the commenter, or '__UNKNOWN__'.
+
+      - name: comment_subject
+        description: Subject line of the comment.
+
+      - name: comment_body
+        description: Comment text. Never null or empty in this table.
+
+      - name: loaded_at
+        description: Time this row was loaded into silver by the incremental build.

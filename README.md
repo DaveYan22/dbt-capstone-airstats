@@ -282,18 +282,25 @@ Add a new record to `RAW.airport_comments` **[ClickHouse]** `raw.airport_comment
 
 Add your solution in the next lines:
 * Adding a new record:
-  ```
-  REPLACE THIS CODE BLOCK BY PASTING THE SQL for adding a new record to `raw.airport_comments`
+  ```sql
+  INSERT INTO raw.airport_comments VALUES
+  (999999999, NULL, NULL, '00A', now(), 'claude_test', 'Test comment', 'Testing the incremental watermark for Exercise 8');
   ```
 * Command to execute to update this model (but only this model, not all the models):
   ```
-  REPLACE THIS CODE BLOCK BY PASTING THE dbt COMMAND YOU EXECUTED
-  ``` 
-* Execute an SQL **[ClickHouse]** in the ClickHouse client to ensure the new record has been added:
+  docker compose run --rm dbt run --select silver_airport_comments
   ```
-  REPLACE THIS CODE BLOCK BY PASTING 
-  1) THE SQL to extract the new record from `silver_airport_comments`
-  2) THE result you see in ClickHouse
+* Execute an SQL **[ClickHouse]** in the ClickHouse client to ensure the new record has been added:
+  ```sql
+  -- 1) the SQL to extract the new record from silver_airport_comments
+  SELECT comment_id, airport_ident, comment_timestamp, member_nickname, loaded_at
+  FROM dev.silver_airport_comments WHERE comment_id = 999999999;
+  ```
+  ```
+  -- 2) the result seen in ClickHouse: exactly 1 row, loaded_at (05:38:21) is
+  --    the incremental build time, not the raw insert time (05:33:12)
+  comment_id=999999999 | airport_ident=00A | comment_timestamp=2026-10-02 05:33:12
+  member_nickname=claude_test | loaded_at=2026-10-02 05:38:21
   ``` 
 
 **Requirements** 
@@ -318,13 +325,24 @@ The airport `Los Angeles County Sheriff's Department Heliport` (airport_ident: `
 > ```
 
 * Updating the record to "closed":
-  ```
-  REPLACE THIS BLOCK BY PASTING THE SQL you executed
+  ```sql
+  -- ident was re-coded 01CN -> US-9364 in the live data; 01CN matches 0 rows.
+  -- The airport was already type='closed', so a round trip was used to capture
+  -- a real transition: reopen -> snapshot -> close -> snapshot.
+  ALTER TABLE raw.airports UPDATE type = 'heliport'
+  WHERE ident = 'US-9364' SETTINGS mutations_sync = 1;
+
+  ALTER TABLE raw.airports UPDATE type = 'closed'
+  WHERE ident = 'US-9364' SETTINGS mutations_sync = 1;
   ```
 * Command to execute and snapshot update:
   ```
-  REPLACE THIS CODE BLOCK BY PASTING THE dbt COMMAND YOU EXECUTED
-  ``` 
+  docker compose run --rm dbt run --select silver_airports
+  docker compose run --rm dbt snapshot
+  ```
+  (run the pair after each raw change, never two raw changes back-to-back)
+  Result: `scd_silver_airports` holds 3 versions for `US-9364`:
+  `closed` (06:05:37 - 06:36:19) -> `heliport` (06:36:19 - 06:37:00) -> `closed` (06:37:00 - current).
 
 #### Analyses
 * Create `analyses/la_heliport_closed.sql` where you validate if the snapshot went through - select every line corresponding to this airport in the snapshot table.

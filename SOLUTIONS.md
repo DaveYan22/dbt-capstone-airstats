@@ -477,10 +477,54 @@ project yet.
 
 ---
 
+## Part 7 leftovers — analysis and README placeholders
+
+**Exercise 9 analysis:** `airstats/analyses/la_heliport_closed.sql` selects
+every version of `US-9364` from `scd_silver_airports`, ordered by
+`dbt_valid_from`. Analyses are compiled but never materialized, so
+`dbt compile --select la_heliport_closed` and then running the compiled file
+against ClickHouse is how it gets executed. The result returns the three
+expected versions: `closed` → `heliport` → `closed` (current).
+
+The README's Exercise 8 and Exercise 9 `REPLACE THIS CODE BLOCK` placeholders
+are now filled with the SQL, commands, and results used above.
+
+---
+
+## Part 9 — Documentation
+
+**Requirement:** descriptions on the silver tables and their columns, at
+least one `{{ doc("...") }}` reference, and an `overview.md` explaining how the
+silver tables interconnect.
+
+**`airstats/models/silver/docs.md`** — a doc block for the shared join key:
+```
+{% docs airport_ident %}
+ICAO airport code, the shared join key across the silver layer. ...
+{% enddocs %}
+```
+
+**`airstats/models/silver/overview.md`** — the `__overview__` block shown on
+the dbt docs homepage. It describes `silver_airports` as the hub, with
+runways and comments both referencing it through `airport_ident`, and notes
+that the relationship tests are `severity: warn` because the source data
+isn't guaranteed to be consistent.
+
+**`airstats/models/silver/schema.yml`** — descriptions added for every
+silver column (22 in total). `airport_ident` is written as
+`description: '{{ doc("airport_ident") }}'` in all three models. All existing
+tests are unchanged.
+
+**Verified:**
+- `dbt build` → `PASS=20 WARN=1 ERROR=0 TOTAL=21` (unchanged from Part 8)
+- `dbt docs generate` → catalog written with no errors
+- the manifest holds the resolved `airport_ident` doc text and the
+  `__overview__` block
+
+---
+
 ## Still open
 
-- Exercise 9's `analyses/la_heliport_closed.sql` file (the analysis query
-  validating the snapshot) — not yet created.
-- Filling the README's remaining `REPLACE THIS CODE BLOCK` placeholders with
-  the actual SQL/commands/results documented above.
-- Part 9 (Documentation) — not started.
+Nothing for Parts 1–9. To view the docs, run
+`docker compose run --rm --service-ports dbt docs serve --host 0.0.0.0 --port 8080`
+and open `http://localhost:8081` (the compose file maps container port 8080 to host port 8081).
